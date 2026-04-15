@@ -1,0 +1,95 @@
+Launching lib/main.dart on sdk gphone64 arm64 in debug mode...
+Running Gradle task 'assembleDebug'...                              9.2s
+✓ Built build/app/outputs/flutter-apk/app-debug.apk
+Installing build/app/outputs/flutter-apk/app-debug.apk...          638ms
+E/AndroidRuntime(10220): FATAL EXCEPTION: main
+E/AndroidRuntime(10220): Process: com.emptylife.civicpulse, PID: 10220
+E/AndroidRuntime(10220): java.lang.RuntimeException: Unable to instantiate activity ComponentInfo{com.emptylife.civicpulse/com.emptylife.civicpulse.MainActivity}: java.lang.ClassNotFoundException: Didn't find class "com.emptylife.civicpulse.MainActivity" on path: DexPathList[[zip file "/data/app/~~3kkDC0uHNtZH8UpZ2N4_Wg==/com.emptylife.civicpulse-RoIH-Re44uOR5-qlpqfmCg==/base.apk"],nativeLibraryDirectories=[/data/app/~~3kkDC0uHNtZH8UpZ2N4_Wg==/com.emptylife.civicpulse-RoIH-Re44uOR5-qlpqfmCg==/lib/arm64, /data/app/~~3kkDC0uHNtZH8UpZ2N4_Wg==/com.emptylife.civicpulse-RoIH-Re44uOR5-qlpqfmCg==/base.apk!/lib/arm64-v8a, /system/lib64, /system_ext/lib64]]
+E/AndroidRuntime(10220): 	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:3689)
+E/AndroidRuntime(10220): 	at android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:3922)
+E/AndroidRuntime(10220): 	at android.app.servertransaction.LaunchActivityItem.execute(LaunchActivityItem.java:103)
+E/AndroidRuntime(10220): 	at android.app.servertransaction.TransactionExecutor.executeCallbacks(TransactionExecutor.java:139)
+E/AndroidRuntime(10220): 	at android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:96)
+E/AndroidRuntime(10220): 	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2443)
+E/AndroidRuntime(10220): 	at android.os.Handler.dispatchMessage(Handler.java:106)
+E/AndroidRuntime(10220): 	at android.os.Looper.loopOnce(Looper.java:205)
+E/AndroidRuntime(10220): 	at android.os.Looper.loop(Looper.java:294)
+E/AndroidRuntime(10220): 	at android.app.ActivityThread.main(ActivityThread.java:8177)
+E/AndroidRuntime(10220): 	at java.lang.reflect.Method.invoke(Native Method)
+E/AndroidRuntime(10220): 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:552)
+E/AndroidRuntime(10220): 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:971)
+E/AndroidRuntime(10220): Caused by: java.lang.ClassNotFoundException: Didn't find class "com.emptylife.civicpulse.MainActivity" on path: DexPathList[[zip file "/data/app/~~3kkDC0uHNtZH8UpZ2N4_Wg==/com.emptylife.civicpulse-RoIH-Re44uOR5-qlpqfmCg==/base.apk"],nativeLibraryDirectories=[/data/app/~~3kkDC0uHNtZH8UpZ2N4_Wg==/com.emptylife.civicpulse-RoIH-Re44uOR5-qlpqfmCg==/lib/arm64, /data/app/~~3kkDC0uHNtZH8UpZ2N4_Wg==/com.emptylife.civicpulse-RoIH-Re44uOR5-qlpqfmCg==/base.apk!/lib/arm64-v8a, /system/lib64, /system_ext/lib64]]
+E/AndroidRuntime(10220): 	at dalvik.system.BaseDexClassLoader.findClass(BaseDexClassLoader.java:259)
+E/AndroidRuntime(10220): 	at java.lang.ClassLoader.loadClass(ClassLoader.java:379)
+E/AndroidRuntime(10220): 	at java.lang.ClassLoader.loadClass(ClassLoader.java:312)
+E/AndroidRuntime(10220): 	at android.app.AppComponentFactory.instantiateActivity(AppComponentFactory.java:95)
+E/AndroidRuntime(10220): 	at androidx.core.app.CoreComponentFactory.instantiateActivity(CoreComponentFactory.java:44)
+E/AndroidRuntime(10220): 	at android.app.Instrumentation.newActivity(Instrumentation.java:1378)
+E/AndroidRuntime(10220): 	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:3676)
+E/AndroidRuntime(10220): 	... 12 more
+E/AndroidRuntime(10505): FATAL EXCEPTION: main
+E/AndroidRuntime(10505): Process: com.emptylife.civicpulse, PID: 10505
+E/AndroidRuntime(10505): java.lang.RuntimeException: Unable to instantiate activity ComponentInfo{com.emptylife.civicpulse/com.emptylife.civicpulse.MainActivity}: java.lang.ClassNotFoundException: Didn't find class "com.emptylife.civicpulse.MainActivity" on path: DexPathList[[zip file "/data/app/~~fzR7KkOtcmA66kW2QcUdLg==/com.emptylife.civicpulse-EZkk055TlFtOLyxMWcLyww==/base.apk"],nativeLibraryDirectories=[/data/app/~~fzR7KkOtcmA66kW2QcUdLg==/com.emptylife.civicpulse-EZkk055TlFtOLyxMWcLyww==/lib/arm64, /data/app/~~fzR7KkOtcmA66kW2QcUdLg==/com.emptylife.civicpulse-EZkk055TlFtOLyxMWcLyww==/base.apk!/lib/arm64-v8a, /system/lib64, /system_ext/lib64]]
+E/AndroidRuntime(10505): 	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:3689)
+E/AndroidRuntime(10505): 	at android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:3922)
+E/AndroidRuntime(10505): 	at android.app.servertransaction.LaunchActivityItem.execute(LaunchActivityItem.java:103)
+E/AndroidRuntime(10505): 	at android.app.servertransaction.TransactionExecutor.executeCallbacks(TransactionExecutor.java:139)
+E/AndroidRuntime(10505): 	at android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:96)
+E/AndroidRuntime(10505): 	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2443)
+E/AndroidRuntime(10505): 	at android.os.Handler.dispatchMessage(Handler.java:106)
+E/AndroidRuntime(10505): 	at android.os.Looper.loopOnce(Looper.java:205)
+E/AndroidRuntime(10505): 	at android.os.Looper.loop(Looper.java:294)
+E/AndroidRuntime(10505): 	at android.app.ActivityThread.main(ActivityThread.java:8177)
+E/AndroidRuntime(10505): 	at java.lang.reflect.Method.invoke(Native Method)
+E/AndroidRuntime(10505): 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:552)
+E/AndroidRuntime(10505): 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:971)
+E/AndroidRuntime(10505): Caused by: java.lang.ClassNotFoundException: Didn't find class "com.emptylife.civicpulse.MainActivity" on path: DexPathList[[zip file "/data/app/~~fzR7KkOtcmA66kW2QcUdLg==/com.emptylife.civicpulse-EZkk055TlFtOLyxMWcLyww==/base.apk"],nativeLibraryDirectories=[/data/app/~~fzR7KkOtcmA66kW2QcUdLg==/com.emptylife.civicpulse-EZkk055TlFtOLyxMWcLyww==/lib/arm64, /data/app/~~fzR7KkOtcmA66kW2QcUdLg==/com.emptylife.civicpulse-EZkk055TlFtOLyxMWcLyww==/base.apk!/lib/arm64-v8a, /system/lib64, /system_ext/lib64]]
+E/AndroidRuntime(10505): 	at dalvik.system.BaseDexClassLoader.findClass(BaseDexClassLoader.java:259)
+E/AndroidRuntime(10505): 	at java.lang.ClassLoader.loadClass(ClassLoader.java:379)
+E/AndroidRuntime(10505): 	at java.lang.ClassLoader.loadClass(ClassLoader.java:312)
+E/AndroidRuntime(10505): 	at android.app.AppComponentFactory.instantiateActivity(AppComponentFactory.java:95)
+E/AndroidRuntime(10505): 	at androidx.core.app.CoreComponentFactory.instantiateActivity(CoreComponentFactory.java:44)
+E/AndroidRuntime(10505): 	at android.app.Instrumentation.newActivity(Instrumentation.java:1378)
+E/AndroidRuntime(10505): 	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:3676)
+E/AndroidRuntime(10505): 	... 12 more
+D/FlutterJNI(10719): Beginning load of flutter...
+D/FlutterJNI(10719): flutter (null) was loaded normally!
+I/flutter (10719): [IMPORTANT:flutter/shell/platform/android/android_context_gl_impeller.cc(104)] Using the Impeller rendering backend (OpenGLES).
+I/flutter (10719): CIVIC_PULSE: Starting main()...
+I/flutter (10719): CIVIC_PULSE: Initializing Firebase...
+
+Flutter run key commands.
+R Hot restart.
+h List all available interactive commands.
+c Clear the screen
+q Quit (terminate the application on the device).
+
+A Dart VM Service on sdk gphone64 arm64 is available at: http://127.0.0.1:59397/II0yFdTUtbA=/
+D/CompatibilityChangeReporter(10719): Compat change id reported: 3400644; UID 10191; state: ENABLED
+I/Choreographer(10719): Skipped 79 frames!  The application may be doing too much work on its main thread.
+I/flutter (10719): CIVIC_PULSE: Firebase Initialized successfully.
+D/ProfileInstaller(10719): Installing profile for com.emptylife.civicpulse
+D/EGL_emulation(10719): app_time_stats: avg=30254.23ms min=50.78ms max=60457.68ms count=2
+E/OpenGLRenderer(10719): Unable to match the desired swap behavior.
+D/EGL_emulation(10719): app_time_stats: avg=21.45ms min=10.95ms max=119.16ms count=46
+D/EGL_emulation(10719): app_time_stats: avg=13.49ms min=1.12ms max=29.92ms count=57
+I/FA      (10719): Application backgrounded at: timestamp_millis: 1775107541150
+W/OpenGLRenderer(10719): Failed to choose config with EGL_SWAP_BEHAVIOR_PRESERVED, retrying without...
+W/OpenGLRenderer(10719): Failed to initialize 101010-2 format, error = EGL_SUCCESS
+E/OpenGLRenderer(10719): Unable to match the desired swap behavior.
+E/OpenGLRenderer(10719): Unable to match the desired swap behavior.
+I/Choreographer(10719): Skipped 35 frames!  The application may be doing too much work on its main thread.
+D/CompatibilityChangeReporter(10719): Compat change id reported: 78294732; UID 10191; state: ENABLED
+I/flutter (10719): Google Sign-In Error: PlatformException(sign_in_failed, com.google.android.gms.common.api.ApiException: 10: , null, null)
+E/flutter (10719): [ERROR:flutter/runtime/dart_vm_initializer.cc(40)] Unhandled Exception: PlatformException(sign_in_failed, com.google.android.gms.common.api.ApiException: 10: , null, null)
+E/flutter (10719): #0      GoogleSignInApi.signIn (package:google_sign_in_android/src/messages.g.dart:255:7)
+E/flutter (10719): <asynchronous suspension>
+E/flutter (10719): #1      GoogleSignInAndroid._signInUserDataFromChannelData (package:google_sign_in_android/google_sign_in_android.dart:114:3)
+E/flutter (10719): <asynchronous suspension>
+E/flutter (10719): #2      GoogleSignIn._callMethod (package:google_sign_in/google_sign_in.dart:282:30)
+E/flutter (10719): <asynchronous suspension>
+E/flutter (10719): #3      GoogleSignIn.signIn.isCanceled (package:google_sign_in/google_sign_in.dart:436:5)
+E/flutter (10719): <asynchronous suspension>
+E/flutter (10719): 
+W/WindowOnBackDispatcher(10719): sendCancelIfRunning: isInProgress=falsecallback=android.view.ViewRootImpl$$ExternalSyntheticLambda17@ee35bda
+Lost connection to device.
