@@ -12,6 +12,8 @@ class Responder {
   final double latitude;
   final double longitude;
   final String role;
+  final int missionsCompleted;
+  final double rating;
   final DateTime? createdAt;
   final DateTime? lastUpdated;
 
@@ -27,6 +29,8 @@ class Responder {
     required this.latitude,
     required this.longitude,
     this.role = 'responder',
+    this.missionsCompleted = 0,
+    this.rating = 5.0,
     this.createdAt,
     this.lastUpdated,
   });
@@ -47,6 +51,8 @@ class Responder {
       'latitude': latitude,
       'longitude': longitude,
       'role': role,
+      'missionsCompleted': missionsCompleted,
+      'rating': rating,
       'createdAt': createdAt != null ? Timestamp.fromDate(createdAt!) : FieldValue.serverTimestamp(),
       'lastUpdated': lastUpdated != null ? Timestamp.fromDate(lastUpdated!) : FieldValue.serverTimestamp(),
     };
@@ -71,6 +77,8 @@ class Responder {
       latitude: lat,
       longitude: lng,
       role: map['role'] as String? ?? 'responder',
+      missionsCompleted: (map['missionsCompleted'] as num?)?.toInt() ?? 0,
+      rating: (map['rating'] as num?)?.toDouble() ?? 5.0,
       createdAt: (map['createdAt'] as Timestamp?)?.toDate(),
       lastUpdated: (map['lastUpdated'] as Timestamp?)?.toDate(),
     );

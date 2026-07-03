@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../models/incident.dart';
 import '../providers/dispatch_provider.dart';
 
@@ -25,31 +26,37 @@ class IncidentDetailsDialog extends StatelessWidget {
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Header Image Area
-              _buildImageSection(context),
-              
-              // Content Area
-              Padding(
-                padding: const EdgeInsets.all(32),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildHeader(),
-                    const SizedBox(height: 24),
-                    _buildDetailRow(Icons.location_on_rounded, "LOCATION", incident.location),
-                    const SizedBox(height: 16),
-                    _buildDetailRow(Icons.description_rounded, "DESCRIPTION", incident.description),
-                    const SizedBox(height: 24),
-                    const Divider(color: Colors.white10),
-                    const SizedBox(height: 24),
-                    _buildActionPanel(context),
-                  ],
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Header Image Area
+                _buildImageSection(context),
+                
+                // Content Area
+                Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildHeader(),
+                      const SizedBox(height: 24),
+                      _buildDetailRow(Icons.location_on_rounded, "LOCATION", incident.location),
+                      const SizedBox(height: 16),
+                      _buildDetailRow(Icons.description_rounded, "DESCRIPTION", incident.description),
+                      const SizedBox(height: 24),
+                      if (incident.audioUrl != null && incident.audioUrl!.isNotEmpty) ...[
+                        _buildAudioSection(context),
+                        const SizedBox(height: 24),
+                      ],
+                      const Divider(color: Colors.white10),
+                      const SizedBox(height: 24),
+                      _buildActionPanel(context),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -244,6 +251,65 @@ class IncidentDetailsDialog extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAudioSection(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text("AUDIO EVIDENCE",
+            style: TextStyle(color: Colors.white24, fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.blueAccent.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.blueAccent.withOpacity(0.1)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.blueAccent.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.mic_rounded, color: Colors.blueAccent, size: 20),
+              ),
+              const SizedBox(width: 16),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("Emergency Voice Recording",
+                        style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+                    SizedBox(height: 2),
+                    Text("Audio Evidence from Scene", style: TextStyle(color: Colors.white38, fontSize: 11)),
+                  ],
+                ),
+              ),
+              TextButton.icon(
+                onPressed: () async {
+                  final url = Uri.parse(incident.audioUrl!);
+                  if (await canLaunchUrl(url)) {
+                    await launchUrl(url);
+                  }
+                },
+                icon: const Icon(Icons.play_circle_fill_rounded, color: Colors.blueAccent),
+                label: const Text("PLAY",
+                    style: TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold, letterSpacing: 1)),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  backgroundColor: Colors.blueAccent.withOpacity(0.05),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );

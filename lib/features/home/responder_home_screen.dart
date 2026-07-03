@@ -25,13 +25,35 @@ class ResponderHomeScreen extends StatelessWidget {
       create: (_) => ResponderProvider(uid: uid),
       child: Consumer<ResponderProvider>(
         builder: (context, provider, _) {
-          // If a new incident is assigned but NOT YET ACCEPTED, show the Alert Screen
-          if (provider.currentResponder?.assignedIncidentId != null && 
-              provider.assignedIncident?.status == 'assigned') {
+          final responder = provider.currentResponder;
+          final incident = provider.assignedIncident;
+
+          // 1. Loading State: If we know an incident is assigned but it's still loading, show a spinner
+          if (responder?.assignedIncidentId != null && (provider.isLoadingIncident || incident == null)) {
+            return const Scaffold(
+              backgroundColor: Color(0xFF030D16),
+              body: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(color: Colors.blueAccent),
+                    SizedBox(height: 24),
+                    Text(
+                      "RECEIVING OPERATIONAL DATA...",
+                      style: TextStyle(color: Colors.blueAccent, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 2),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          // 2. Alert State: If a new incident is assigned but NOT YET ACCEPTED (still 'available'), show the Alert Screen
+          if (responder?.assignedIncidentId != null && responder?.availability == 'available') {
             return const ResponderAlertScreen();
           }
 
-          // Otherwise, show the main navigation shell
+          // 3. Main State: Otherwise, show the main navigation shell (Hub/Map/Profile)
           return const ResponderMainScreen();
         },
       ),

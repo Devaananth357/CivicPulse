@@ -12,6 +12,7 @@ class ResponderProvider extends ChangeNotifier {
   int _currentTabIndex = 0;
   Responder? _currentResponder;
   Incident? _assignedIncident;
+  String? _currentIncidentId;
   bool _isLoadingIncident = false;
 
   StreamSubscription<Responder?>? _responderSubscription;
@@ -30,15 +31,30 @@ class ResponderProvider extends ChangeNotifier {
 
   void _initResponderStream() {
     _responderSubscription = _firestoreService.getResponderStream(uid).listen((responder) {
-      _currentResponder = responder;
-      notifyListeners();
+      if (responder == null) return;
 
-      if (responder?.assignedIncidentId != null) {
-        _initIncidentStream(responder!.assignedIncidentId!);
-      } else {
-        _assignedIncident = null;
-        _stopIncidentStream();
+      // Detect if this is a "Core State Change" (Mission ID or Availability)
+      // vs just a background location update.
+      final bool statusChanged = _currentResponder?.availability != responder.availability;
+      final bool missionChanged = _currentResponder?.assignedIncidentId != responder.assignedIncidentId;
+      
+      _currentResponder = responder;
+
+      // Only notify listeners if the status or mission changed.
+      // Background location updates will still update our internal responder object
+      // but won't trigger a full UI rebuild of the Map/Navigation screens.
+      if (statusChanged || missionChanged) {
+        if (responder.assignedIncidentId != null) {
+          _initIncidentStream(responder.assignedIncidentId!);
+        } else {
+          _currentIncidentId = null;
+          _assignedIncident = null;
+          _stopIncidentStream();
+        }
         notifyListeners();
+      } else if (_currentIncidentId == null && responder.assignedIncidentId != null) {
+        // Edge case: we have an incident ID but haven't started the stream yet
+        _initIncidentStream(responder.assignedIncidentId!);
       }
     });
   }
@@ -120,15 +136,23 @@ class ResponderProvider extends ChangeNotifier {
   }
 
   void _initIncidentStream(String incidentId) {
-    // Prevent multiple subscriptions
-    if (_incidentSubscription != null && _assignedIncident?.id == incidentId) return;
+    // Prevent redundant resubscriptions if already listening to this ID
+    if (_incidentSubscription != null && _currentIncidentId == incidentId) return;
     
+    // Reset state for new mission fetch
+    _currentIncidentId = incidentId;
     _isLoadingIncident = true;
+    _assignedIncident = null;
     notifyListeners();
 
     _stopIncidentStream();
     _incidentSubscription = _firestoreService.getIncidentStream(incidentId).listen((incident) {
+      print("[MISSION] Incident update received: ${incident?.id} - Status: ${incident?.status}");
       _assignedIncident = incident;
+      _isLoadingIncident = false;
+      notifyListeners();
+    }, onError: (e) {
+      print("[MISSION] Stream Error: $e");
       _isLoadingIncident = false;
       notifyListeners();
     });
@@ -137,6 +161,7 @@ class ResponderProvider extends ChangeNotifier {
   void _stopIncidentStream() {
     _incidentSubscription?.cancel();
     _incidentSubscription = null;
+    print("[MISSION] Incident stream stopped.");
   }
 
   Future<void> acceptMission() async {
@@ -171,6 +196,16 @@ class ResponderProvider extends ChangeNotifier {
       await _firestoreService.requestMissionCompletion(_assignedIncident!.id!);
     } catch (e) {
       print("Error requesting completion: $e");
+      rethrow;
+    }
+  }
+
+  Future<void> requestBackup(String specialization) async {
+    if (_assignedIncident == null) return;
+    try {
+      await _firestoreService.requestBackup(_assignedIncident!.id!, specialization);
+    } catch (e) {
+      print("Error requesting backup: $e");
       rethrow;
     }
   }

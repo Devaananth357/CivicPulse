@@ -13,14 +13,22 @@ class Incident {
   final String? aiPriority;
   final DateTime createdAt;
   final String status;
+  final DateTime? completedAt;
+  final List<String> aiReasons;
+  final bool isSos;
+  final List<String> backupRequests; // e.g. ['medic', 'fire']
+  final DateTime? backupRequestedAt;
   final List<String> assignedResponderIds;
   final Map<String, dynamic>? responderDetails; // Map of responderId -> {name, imageUrl, specialization, phone}
   final double? latitude;
   final double? longitude;
   final String? imageUrl;
+  final String? audioUrl;
   final String? remarks;
   final String? reporterName;
   final String? userId;
+  final int confirmCount;
+  final int denyCount;
 
   Incident({
     this.id,
@@ -39,11 +47,22 @@ class Incident {
     this.latitude,
     this.longitude,
     this.imageUrl,
+    this.audioUrl,
     this.remarks,
     this.responderDetails,
     this.reporterName,
     this.userId,
+    this.completedAt,
+    this.aiReasons = const [],
+    this.isSos = false,
+    this.backupRequests = const [],
+    this.backupRequestedAt,
+    this.confirmCount = 0,
+    this.denyCount = 0,
   });
+
+  bool get isCompleted => status.toLowerCase() == 'completed' || completedAt != null;
+  bool get isActive => !isCompleted;
 
   // Backward Compatibility Getters
   String? get assignedResponderId => assignedResponderIds.isNotEmpty ? assignedResponderIds.first : null;
@@ -61,17 +80,25 @@ class Incident {
       'aiConfidence': aiConfidence,
       'aiAnalysisTime': aiAnalysisTime,
       'aiReasoning': aiReasoning,
+      'aiReasons': aiReasons,
       'aiPriority': aiPriority,
       'createdAt': Timestamp.fromDate(createdAt),
       'status': status,
+      'isSos': isSos,
+      'backupRequests': backupRequests,
+      'backupRequestedAt': backupRequestedAt != null ? Timestamp.fromDate(backupRequestedAt!) : null,
       'assignedResponderIds': assignedResponderIds,
       'latitude': latitude,
       'longitude': longitude,
       'imageUrl': imageUrl,
+      'audioUrl': audioUrl,
       'remarks': remarks,
       'responderDetails': responderDetails,
       'reporterName': reporterName,
       'userId': userId,
+      'confirmCount': confirmCount,
+      'denyCount': denyCount,
+      'completedAt': completedAt != null ? Timestamp.fromDate(completedAt!) : null,
     };
   }
 
@@ -111,7 +138,7 @@ class Incident {
       description: map['description'] as String? ?? 'No description provided.',
       severity: map['severity'] as String? ?? 'Unknown',
       location: displayLocation,
-      aiConfidence: map['aiConfidence'] as int? ?? 0,
+      aiConfidence: (map['aiConfidence'] as num?)?.toInt() ?? 0,
       aiAnalysisTime: map['aiAnalysisTime'] as String? ?? '0.0s',
       aiReasoning: map['aiReasoning'] as String?,
       aiPriority: map['aiPriority'] as String?,
@@ -121,10 +148,18 @@ class Incident {
       latitude: lat,
       longitude: lng,
       imageUrl: map['imageUrl'] as String?,
+      audioUrl: map['audioUrl'] as String?,
       remarks: map['remarks'] as String?,
       responderDetails: map['responderDetails'] as Map<String, dynamic>?,
       reporterName: map['reporterName'] as String?,
       userId: map['userId'] as String?,
+      completedAt: (map['completedAt'] as Timestamp?)?.toDate(),
+      aiReasons: List<String>.from(map['aiReasons'] ?? []),
+      isSos: map['isSos'] as bool? ?? false,
+      backupRequests: List<String>.from(map['backupRequests'] ?? []),
+      backupRequestedAt: (map['backupRequestedAt'] as Timestamp?)?.toDate(),
+      confirmCount: (map['confirmCount'] as num?)?.toInt() ?? 0,
+      denyCount: (map['denyCount'] as num?)?.toInt() ?? 0,
     );
   }
 }

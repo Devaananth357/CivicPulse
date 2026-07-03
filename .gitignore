@@ -49,3 +49,7 @@ backend/.env
 backend/serviceAccountKey.json
 .env*
 !**/.env.example
+
+# Dependencies
+node_modules/
+**/node_modules/

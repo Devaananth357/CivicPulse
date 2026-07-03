@@ -17,6 +17,7 @@ import 'features/admin/admin_login_screen.dart';
 import 'features/admin/add_responder_screen.dart';
 import 'features/admin/providers/dispatch_provider.dart';
 import 'features/home/responder_home_screen.dart';
+import 'features/splash/splash_screen.dart';
 
 void main() async {
   print("CIVIC_PULSE: Starting main()...");
@@ -24,16 +25,21 @@ void main() async {
   
   bool firebaseInitialized = false;
   String? errorMessage;
+  bool isNetworkError = false;
 
   print("CIVIC_PULSE: Initializing Firebase...");
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
-    );
+    ).timeout(const Duration(seconds: 10)); // Added timeout to catch hanging initialization
+    
     firebaseInitialized = true;
     print("CIVIC_PULSE: Firebase Initialized successfully.");
   } catch (e) {
     errorMessage = e.toString();
+    isNetworkError = errorMessage.contains('UnknownHostException') || 
+                     errorMessage.contains('network') || 
+                     errorMessage.contains('unavailable');
     print("CIVIC_PULSE: Firebase Initialization failed: $e");
   }
 
@@ -50,7 +56,11 @@ void main() async {
         if (firebaseInitialized)
           ChangeNotifierProvider(create: (_) => HomeProvider()..initialize()),
       ],
-      child: MyApp(firebaseInitialized: firebaseInitialized, errorMessage: errorMessage),
+      child: MyApp(
+        firebaseInitialized: firebaseInitialized, 
+        errorMessage: errorMessage,
+        isNetworkError: isNetworkError,
+      ),
     ),
   );
 }
@@ -58,11 +68,13 @@ void main() async {
 class MyApp extends StatelessWidget {
   final bool firebaseInitialized;
   final String? errorMessage;
+  final bool isNetworkError;
 
   const MyApp({
     super.key, 
     required this.firebaseInitialized,
     this.errorMessage,
+    this.isNetworkError = false,
   });
 
   @override
@@ -75,7 +87,7 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
         useMaterial3: true,
       ),
-      initialRoute: '/',
+      initialRoute: '/splash',
       onGenerateRoute: (settings) {
         final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
@@ -104,11 +116,16 @@ class MyApp extends StatelessWidget {
 
         // Standard App Routes
         switch (settings.name) {
+          case '/splash':
+            return MaterialPageRoute(builder: (_) => const SplashScreen());
           case '/':
             return MaterialPageRoute(
               builder: (_) => firebaseInitialized 
                   ? const AuthWrapper() 
-                  : _FirebaseErrorScaffold(errorMessage: errorMessage),
+                  : _FirebaseErrorScaffold(
+                      errorMessage: errorMessage,
+                      isNetworkError: isNetworkError,
+                    ),
             );
           default:
             return MaterialPageRoute(builder: (_) => const AuthOptionsScreen());
@@ -120,56 +137,125 @@ class MyApp extends StatelessWidget {
 
 class _FirebaseErrorScaffold extends StatelessWidget {
   final String? errorMessage;
-  const _FirebaseErrorScaffold({this.errorMessage});
+  final bool isNetworkError;
+  
+  const _FirebaseErrorScaffold({
+    this.errorMessage,
+    this.isNetworkError = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFF0A0E21),
       body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, color: Colors.red, size: 60),
-              const SizedBox(height: 16),
-              const Text(
-                "Firebase Configuration Missing",
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                "The app requires Firebase to function. "
-                "Please ensure you have added GoogleService-Info.plist (iOS) "
-                "or google-services.json (Android).",
-                textAlign: TextAlign.center,
-              ),
-              if (errorMessage != null) ...[
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  isNetworkError ? Icons.wifi_off : Icons.error_outline, 
+                  color: Colors.redAccent, 
+                  size: 80
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  isNetworkError ? "Network Connection Error" : "Firebase Initialization Failed",
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+                ),
                 const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[900],
-                    borderRadius: BorderRadius.circular(8),
+                Text(
+                  isNetworkError 
+                    ? "The app cannot reach Firebase. This is usually a DNS or internet issue on your device/emulator."
+                    : "The app requires a valid Firebase configuration to function.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey[400], fontSize: 16),
+                ),
+                
+                if (isNetworkError) ...[
+                  const SizedBox(height: 32),
+                  _buildTroubleshootingTip(
+                    context, 
+                    "Cold Boot Emulator", 
+                    "Open Device Manager -> Action Menu (3 dots) -> Cold Boot Now."
                   ),
-                  child: Text(
-                    errorMessage!,
-                    style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                  _buildTroubleshootingTip(
+                    context, 
+                    "Check DNS", 
+                    "Ensure your host Mac has internet. Toggle Airplane mode in the emulator."
+                  ),
+                ],
+
+                if (errorMessage != null) ...[
+                  const SizedBox(height: 24),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.red.withOpacity(0.3)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text("Technical Details:", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12)),
+                        const SizedBox(height: 4),
+                        Text(
+                          errorMessage!,
+                          style: const TextStyle(fontFamily: 'monospace', fontSize: 11, color: Colors.white70),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 40),
+                SizedBox(
+                  width: 200,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: () => main(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blueAccent,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: const Text("Retry Connection", style: TextStyle(fontWeight: FontWeight.bold)),
                   ),
                 ),
               ],
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () => main(),
-                child: const Text("Retry"),
-              ),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
+
+  Widget _buildTroubleshootingTip(BuildContext context, String title, String description) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.check_circle_outline, color: Colors.greenAccent, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                Text(description, style: TextStyle(color: Colors.grey[500], fontSize: 13)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
+
 
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});

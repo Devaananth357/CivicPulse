@@ -7,7 +7,10 @@ class AppUser {
   final String? phoneNumber;
   final String? photoUrl;
   final String role; // 'admin', 'responder', 'user'
+  final String status; // 'safe', 'danger'
+  final bool isInDanger;
   final DateTime lastActive;
+  final DateTime? lastSafeAt;
 
   AppUser({
     required this.uid,
@@ -16,7 +19,10 @@ class AppUser {
     this.phoneNumber,
     this.photoUrl,
     this.role = 'user',
+    this.status = 'safe',
+    this.isInDanger = false,
     required this.lastActive,
+    this.lastSafeAt,
   });
 
   Map<String, dynamic> toMap() {
@@ -27,7 +33,10 @@ class AppUser {
       'phoneNumber': phoneNumber,
       'photoUrl': photoUrl,
       'role': role,
+      'status': status,
+      'isInDanger': isInDanger,
       'lastActive': Timestamp.fromDate(lastActive),
+      'lastSafeAt': lastSafeAt != null ? Timestamp.fromDate(lastSafeAt!) : null,
     };
   }
 
@@ -39,7 +48,10 @@ class AppUser {
       phoneNumber: map['phoneNumber'] as String?,
       photoUrl: map['photoUrl'] as String?,
       role: map['role'] as String? ?? 'user',
+      status: map['status'] as String? ?? 'safe',
+      isInDanger: map['isInDanger'] as bool? ?? false,
       lastActive: (map['lastActive'] as Timestamp).toDate(),
+      lastSafeAt: (map['lastSafeAt'] as Timestamp?)?.toDate(),
     );
   }
 }

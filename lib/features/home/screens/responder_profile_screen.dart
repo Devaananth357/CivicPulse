@@ -99,9 +99,9 @@ class ResponderProfileScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                   Row(
                     children: [
-                      Expanded(child: _buildStatBox("COMPLETED", "24", Colors.greenAccent)),
+                      Expanded(child: _buildStatBox("COMPLETED", responder.missionsCompleted.toString(), Colors.greenAccent)),
                       const SizedBox(width: 16),
-                      Expanded(child: _buildStatBox("RATING", "4.9", Colors.orangeAccent)),
+                      Expanded(child: _buildStatBox("RATING", responder.rating.toStringAsFixed(1), Colors.orangeAccent)),
                     ],
                   ),
                   const SizedBox(height: 48),

@@ -4,10 +4,30 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import '../providers/responder_provider.dart';
 import '../../../models/incident.dart';
+import '../../../core/utils/map_utils.dart';
 import 'chat_screen.dart';
 
-class ResponderNavigationScreen extends StatelessWidget {
+class ResponderNavigationScreen extends StatefulWidget {
   const ResponderNavigationScreen({super.key});
+
+  @override
+  State<ResponderNavigationScreen> createState() => _ResponderNavigationScreenState();
+}
+
+class _ResponderNavigationScreenState extends State<ResponderNavigationScreen> {
+  late final NetworkTileProvider _tileProvider;
+
+  @override
+  void initState() {
+    super.initState();
+    _tileProvider = NetworkTileProvider(
+      httpClient: MapUtils.mapClient,
+      headers: {
+        'User-Agent': 'CivicPulse/1.0 (com.emptylife.civicpulse; contact@civicpulse.app)',
+        'Accept': 'image/png,image/*',
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,20 +49,25 @@ class ResponderNavigationScreen extends StatelessWidget {
               initialZoom: 15,
             ),
             children: [
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.emptylife.civicpulse',
-                tileBuilder: (context, tileWidget, tile) {
-                  return ColorFiltered(
-                    colorFilter: const ColorFilter.matrix([
-                      -1, 0, 0, 0, 255,
-                      0, -1, 0, 0, 255,
-                      0, 0, -1, 0, 255,
-                      0, 0, 0, 1, 0,
-                    ]),
-                    child: tileWidget,
-                  );
-                },
+              ColorFiltered(
+                colorFilter: const ColorFilter.matrix([
+                  -0.2126, -0.7152, -0.0722, 0, 255,
+                  -0.2126, -0.7152, -0.0722, 0, 255,
+                  -0.2126, -0.7152, -0.0722, 0, 255,
+                  0, 0, 0, 1, 0,
+                ]),
+                child: TileLayer(
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'com.emptylife.civicpulse',
+                  maxZoom: 18,
+                  tileProvider: _tileProvider,
+                  fallbackUrl: 'https://tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
+                  errorTileCallback: (tile, error, stackTrace) {
+                    debugPrint('[MAP] Tile error: ${tile.coordinates} - $error');
+                  },
+                  tileDisplay: const TileDisplay.fadeIn(duration: Duration(milliseconds: 200)),
+                  retinaMode: false,
+                ),
               ),
 
               // Incident Marker (Target)
@@ -238,8 +263,59 @@ class ResponderNavigationScreen extends StatelessWidget {
               ),
             ),
           ),
+          const SizedBox(height: 12),
+          if (!isPending)
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: OutlinedButton.icon(
+                onPressed: () => _showBackupDialog(context, provider),
+                icon: const Icon(Icons.group_add_rounded, size: 18),
+                label: const Text("REQUEST ADDITIONAL BACKUP", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.orangeAccent,
+                  side: BorderSide(color: Colors.orangeAccent.withOpacity(0.3)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
         ],
       ),
+    );
+  }
+
+  void _showBackupDialog(BuildContext context, ResponderProvider provider) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF0B1D2A),
+        title: const Text("Select Backup Team", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildBackupOption(context, provider, "Medic", Icons.medical_services_rounded, Colors.blueAccent),
+            _buildBackupOption(context, provider, "Fire", Icons.local_fire_department_rounded, Colors.redAccent),
+            _buildBackupOption(context, provider, "Police", Icons.local_police_rounded, Colors.indigoAccent),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBackupOption(BuildContext context, ResponderProvider provider, String type, IconData icon, Color color) {
+    return ListTile(
+      leading: Icon(icon, color: color),
+      title: Text(type, style: const TextStyle(color: Colors.white)),
+      onTap: () {
+        provider.requestBackup(type);
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Backup request for $type sent to Command Center"),
+            backgroundColor: Colors.blueAccent,
+          ),
+        );
+      },
     );
   }
 

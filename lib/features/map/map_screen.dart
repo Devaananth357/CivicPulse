@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'map_provider.dart';
 import '../../models/sos_alert.dart';
+import '../../core/utils/map_utils.dart';
 import '../../core/theme/app_colors.dart';
 
 class MapScreen extends StatefulWidget {
@@ -15,10 +16,18 @@ class MapScreen extends StatefulWidget {
 
 class _MapScreenState extends State<MapScreen> {
   final MapController _mapController = MapController();
+  late final NetworkTileProvider _tileProvider;
 
   @override
   void initState() {
     super.initState();
+    _tileProvider = NetworkTileProvider(
+      httpClient: MapUtils.mapClient,
+      headers: {
+        'User-Agent': 'CivicPulse/1.0 (com.emptylife.civicpulse; contact@civicpulse.app)',
+        'Accept': 'image/png,image/*',
+      },
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<MapProvider>().initialize();
     });
@@ -134,21 +143,25 @@ class _MapScreenState extends State<MapScreen> {
                 maxZoom: 18.0,
               ),
               children: [
-                TileLayer(
-                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                  userAgentPackageName: 'com.emptylife.civicpulse',
-                  // Dark mode filtering for Tiles (Subtle logic)
-                  tileBuilder: (context, widget, tile) {
-                    return ColorFiltered(
-                      colorFilter: const ColorFilter.matrix([
-                        -1, 0, 0, 0, 255,
-                        0, -1, 0, 0, 255,
-                        0, 0, -1, 0, 255,
-                        0, 0, 0, 1, 0,
-                      ]),
-                      child: widget,
-                    );
-                  },
+                ColorFiltered(
+                  colorFilter: const ColorFilter.matrix([
+                    -0.2126, -0.7152, -0.0722, 0, 255,
+                    -0.2126, -0.7152, -0.0722, 0, 255,
+                    -0.2126, -0.7152, -0.0722, 0, 255,
+                    0, 0, 0, 1, 0,
+                  ]),
+                  child: TileLayer(
+                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'com.emptylife.civicpulse',
+                    maxZoom: 18,
+                    tileProvider: _tileProvider,
+                    fallbackUrl: 'https://tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
+                    errorTileCallback: (tile, error, stackTrace) {
+                      debugPrint('[MAP] Tile error: ${tile.coordinates} - $error');
+                    },
+                    tileDisplay: const TileDisplay.fadeIn(duration: Duration(milliseconds: 200)),
+                    retinaMode: false,
+                  ),
                 ),
                 MarkerLayer(
                   markers: mapProvider.alerts.map((alert) {

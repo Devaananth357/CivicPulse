@@ -7,12 +7,15 @@ class InfoCard extends StatelessWidget {
   final IconData icon;
   final Color? iconColor;
 
+  final Widget? extraContent;
+
   const InfoCard({
     super.key,
     required this.title,
     required this.subtitle,
     required this.icon,
     this.iconColor,
+    this.extraContent,
   });
 
   @override
@@ -60,6 +63,10 @@ class InfoCard extends StatelessWidget {
                       fontSize: 13,
                     ),
                   ),
+                  if (extraContent != null) ...[
+                    const SizedBox(height: 12),
+                    extraContent!,
+                  ],
                 ],
               ),
             ),

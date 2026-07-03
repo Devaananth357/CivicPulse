@@ -15,6 +15,7 @@ class AuthProvider extends ChangeNotifier {
   AppUser? _appUser;
   AuthStatus _status = AuthStatus.unauthenticated;
   StreamSubscription<User?>? _authSubscription;
+  StreamSubscription<AppUser?>? _userSubscription;
 
   AppUser? get appUser => _appUser;
   AuthStatus get status => _status;
@@ -25,6 +26,7 @@ class AuthProvider extends ChangeNotifier {
   String? get userId => _appUser?.uid;
   String? get userName => _appUser?.displayName;
   String get userRole => _appUser?.role ?? 'user';
+  String get userStatus => _appUser?.status ?? 'safe';
 
   AuthProvider({bool initialized = true}) {
     if (initialized) {
@@ -40,16 +42,17 @@ class AuthProvider extends ChangeNotifier {
     _authSubscription = _authService.user.listen((User? firebaseUser) async {
       if (firebaseUser == null) {
         _appUser = null;
+        _userSubscription?.cancel();
         _status = AuthStatus.unauthenticated;
         notifyListeners();
       } else {
-        await _syncFirebaseUser(firebaseUser);
+        await _signInSync(firebaseUser);
       }
     });
   }
 
-  Future<void> _syncFirebaseUser(User firebaseUser) async {
-    // 1. Fetch from 'users' collection
+  Future<void> _signInSync(User firebaseUser) async {
+    // 1. Fetch from 'users' collection once for initial role check
     _appUser = await _userRepository.getUser(firebaseUser.uid);
     
     // 2. Check for role in 'responders' collection as a fallback/sync mechanism
@@ -63,7 +66,6 @@ class AuthProvider extends ChangeNotifier {
       
       if (responderDoc.exists) {
         resolvedRole = 'responder';
-        debugPrint("AuthProvider: Found responder role in 'responders' collection for ${firebaseUser.uid}");
       }
     }
 
@@ -79,34 +81,25 @@ class AuthProvider extends ChangeNotifier {
         lastActive: DateTime.now(),
       );
       await _userRepository.saveUser(_appUser!);
-    } else if (_appUser!.role != resolvedRole) {
-      // Sync the role if it was found in responders collection
-      _appUser = AppUser(
-        uid: _appUser!.uid,
-        email: _appUser!.email,
-        displayName: _appUser!.displayName,
-        phoneNumber: _appUser!.phoneNumber,
-        photoUrl: _appUser!.photoUrl,
-        role: resolvedRole,
-        lastActive: DateTime.now(),
-      );
-      await _userRepository.saveUser(_appUser!);
-    } else {
-      // Just update last active
-      _appUser = AppUser(
-        uid: _appUser!.uid,
-        email: firebaseUser.email ?? _appUser!.email,
-        displayName: firebaseUser.displayName ?? _appUser!.displayName,
-        phoneNumber: firebaseUser.phoneNumber ?? _appUser!.phoneNumber,
-        photoUrl: firebaseUser.photoURL ?? _appUser!.photoUrl,
-        role: _appUser!.role,
-        lastActive: DateTime.now(),
-      );
-      await _userRepository.saveUser(_appUser!);
     }
+
+    // 3. Start Real-time listener for the user profile (status, role, etc)
+    _userSubscription?.cancel();
+    _userSubscription = _userRepository.userStream(firebaseUser.uid).listen((updatedUser) {
+      if (updatedUser != null) {
+        _appUser = updatedUser;
+        notifyListeners();
+      }
+    });
     
     _status = AuthStatus.authenticated;
     notifyListeners();
+  }
+
+  // Update specific user status
+  Future<void> updateStatus(String status) async {
+    if (_appUser == null) return;
+    await _userRepository.updateUserStatus(_appUser!.uid, status);
   }
 
   // Google Sign-In wrapper
@@ -141,6 +134,7 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> signOut() async {
+    _userSubscription?.cancel();
     await _authService.signOut();
   }
 
@@ -151,7 +145,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       final credential = await _authService.signInWithEmailAndPassword(email, password);
       if (credential.user != null) {
-        await _syncFirebaseUser(credential.user!);
+        await _signInSync(credential.user!);
       }
     } catch (e) {
       _status = AuthStatus.unauthenticated;
@@ -180,6 +174,7 @@ class AuthProvider extends ChangeNotifier {
           lastActive: DateTime.now(),
         );
         await _userRepository.saveUser(_appUser!);
+        await _signInSync(user);
       }
     } catch (e) {
       _status = AuthStatus.unauthenticated;
@@ -198,10 +193,10 @@ class AuthProvider extends ChangeNotifier {
       
       if (user != null) {
         // EXPLICITLY wait for sync before checking role
-        await _syncFirebaseUser(user);
+        await _signInSync(user);
         
         if (!isAdmin) {
-          await _authService.signOut();
+          await signOut();
           _appUser = null;
           _status = AuthStatus.unauthenticated;
           notifyListeners();
@@ -218,6 +213,7 @@ class AuthProvider extends ChangeNotifier {
   @override
   void dispose() {
     _authSubscription?.cancel();
+    _userSubscription?.cancel();
     super.dispose();
   }
 }

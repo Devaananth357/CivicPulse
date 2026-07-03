@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../home_provider.dart';
 import 'package:civic_pulse/models/system_status.dart';
 
 class StatusHeader extends StatefulWidget {
@@ -46,7 +47,10 @@ class _StatusHeaderState extends State<StatusHeader> with SingleTickerProviderSt
 
   @override
   Widget build(BuildContext context) {
-    final statusText = widget.systemStatus?.status ?? 'Safe';
+    final homeProvider = context.watch<HomeProvider>();
+    final authProvider = context.read<AuthProvider>();
+    
+    final statusText = homeProvider.effectiveStatus;
     final statusColor = getStatusColor(statusText);
     final isDanger = statusText.toLowerCase() == 'danger';
 
@@ -122,48 +126,62 @@ class _StatusHeaderState extends State<StatusHeader> with SingleTickerProviderSt
           ),
           
           // buildStatusBadge(status) Equivalent
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: statusColor.withOpacity(0.2),
-                width: 1,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: statusColor.withOpacity(0.05),
-                  blurRadius: 10,
-                  spreadRadius: 2,
+          GestureDetector(
+            onLongPress: () {
+              // Update individual user status instead of global status
+              authProvider.updateStatus('safe');
+              
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("PERSONAL STATUS RESET TO SAFE"),
+                  backgroundColor: Colors.green,
+                  behavior: SnackBarBehavior.floating,
                 ),
-              ],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  statusText.toLowerCase() == 'safe' 
-                      ? Icons.check_circle_rounded 
-                      : Icons.warning_rounded, 
-                  color: statusColor, 
-                  size: 14
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: statusColor.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: statusColor.withOpacity(0.2),
+                  width: 1,
                 ),
-                const SizedBox(width: 6),
-                Text(
-                  statusText.toUpperCase(),
-                  style: TextStyle(
-                    color: statusColor,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0.5,
+                boxShadow: [
+                  BoxShadow(
+                    color: statusColor.withOpacity(0.05),
+                    blurRadius: 10,
+                    spreadRadius: 2,
                   ),
-                ),
-              ],
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    statusText.toLowerCase() == 'safe' 
+                        ? Icons.check_circle_rounded 
+                        : Icons.warning_rounded, 
+                    color: statusColor, 
+                    size: 14
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    statusText.toUpperCase(),
+                    style: TextStyle(
+                      color: statusColor,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           IconButton(
-            onPressed: () => context.read<AuthProvider>().signOut(),
+            onPressed: () => authProvider.signOut(),
             icon: const Icon(Icons.logout_rounded, color: Colors.white38, size: 20),
             tooltip: "Logout",
           ),

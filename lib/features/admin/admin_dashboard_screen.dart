@@ -9,6 +9,10 @@ import '../auth/providers/auth_provider.dart';
 import 'widgets/incident_card.dart';
 import 'providers/dispatch_provider.dart';
 import 'widgets/dispatch_control_panel.dart';
+import 'widgets/manual_broadcast_panel.dart';
+import '../../core/utils/map_utils.dart';
+import 'widgets/smart_broadcast_dialog.dart';
+import 'dart:async';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -21,6 +25,49 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   final MapController _mapController = MapController();
   final FirestoreService _firestoreService = FirestoreService();
   bool _isViewingHistory = false;
+  bool _showBroadcastPanel = false;
+  StreamSubscription? _broadcastPromptSubscription;
+  late final NetworkTileProvider _tileProvider;
+
+  @override
+  void initState() {
+    super.initState();
+    _tileProvider = NetworkTileProvider(
+      httpClient: MapUtils.mapClient,
+      headers: {
+        'User-Agent': 'CivicPulse/1.0 (com.emptylife.civicpulse; contact@civicpulse.app)',
+        'Accept': 'image/png,image/*',
+      },
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initBroadcastListener();
+    });
+  }
+
+  void _initBroadcastListener() {
+    final dispatchProvider = Provider.of<DispatchProvider>(context, listen: false);
+    _broadcastPromptSubscription = dispatchProvider.pendingBroadcastPromptStream.listen((incident) {
+      _showSmartBroadcastPrompt(incident);
+    });
+  }
+
+  void _showSmartBroadcastPrompt(Incident incident) async {
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false, // Force decision
+      builder: (context) => SmartBroadcastDialog(incident: incident),
+    );
+
+    if (result == null || !result) {
+      print("🚨 Admin ignored broadcast prompt for incident ${incident.id}");
+    }
+  }
+
+  @override
+  void dispose() {
+    _broadcastPromptSubscription?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,11 +89,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               stream: _firestoreService.getRespondersStream(),
               builder: (context, responderSnapshot) {
                 return StreamBuilder<List<Incident>>(
-                  stream: _isViewingHistory 
-                      ? _firestoreService.getCompletedIncidentsStream() 
-                      : _firestoreService.getIncidentsStream(),
+                  stream: _firestoreService.getAllIncidentsStream(),
                   builder: (context, incidentSnapshot) {
-                    final incidents = incidentSnapshot.data ?? [];
+                    final allIncidents = incidentSnapshot.data ?? [];
+                    final incidents = _isViewingHistory 
+                        ? allIncidents.where((i) => i.isCompleted).toList()
+                        : allIncidents.where((i) => i.isActive).toList();
                     final responders = responderSnapshot.data ?? [];
 
                     return Row(
@@ -60,12 +108,20 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                 incidents: incidents,
                                 responders: responders,
                                 mapController: _mapController,
+                                tileProvider: _tileProvider,
                                 selectedIncidentId: dispatchProvider.selectedIncident?.id,
                                 onIncidentSelected: (incident) => dispatchProvider.selectIncident(incident, responders),
                               ),
                               _buildMapOverlayControls(),
                               _buildSystemStatusOverlay(),
                               _buildAdminAuthControls(authProvider),
+                              if (_showBroadcastPanel)
+                                Positioned(
+                                  bottom: 100,
+                                  left: 24,
+                                  width: 400,
+                                  child: ManualBroadcastPanel(mapCenter: _mapController.center),
+                                ),
                             ],
                           ),
                         ),
@@ -85,25 +141,27 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                               _buildCommandHeader(),
                               _buildConfidenceIndicator(incidents),
                               Expanded(
-                                child: ListView.builder(
-                                  padding: const EdgeInsets.all(16),
-                                  itemCount: incidents.length,
-                                  itemBuilder: (context, index) {
-                                    final incident = incidents[index];
-                                    return IncidentCard(
-                                      incident: incident,
-                                      onTap: () {
-                                        dispatchProvider.selectIncident(incident, responders);
-                                        if (incident.latitude != null && incident.longitude != null) {
-                                          _mapController.move(
-                                            LatLng(incident.latitude!, incident.longitude!),
-                                            15.0,
-                                          );
-                                        }
+                                child: incidents.isEmpty 
+                                  ? _buildEmptyState()
+                                  : ListView.builder(
+                                      padding: const EdgeInsets.all(16),
+                                      itemCount: incidents.length,
+                                      itemBuilder: (context, index) {
+                                        final incident = incidents[index];
+                                        return IncidentCard(
+                                          incident: incident,
+                                          onTap: () {
+                                            dispatchProvider.selectIncident(incident, responders);
+                                            if (incident.latitude != null && incident.longitude != null) {
+                                              _mapController.move(
+                                                LatLng(incident.latitude!, incident.longitude!),
+                                                15.0,
+                                              );
+                                            }
+                                          },
+                                        );
                                       },
-                                    );
-                                  },
-                                ),
+                                    ),
                               ),
                             ],
                           ),
@@ -279,12 +337,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           _buildMapControlButton(Icons.remove, () {
             _mapController.move(_mapController.center, _mapController.zoom - 1);
           }),
+          const SizedBox(height: 8),
+          _buildMapControlButton(
+            Icons.emergency_share_rounded, 
+            () => setState(() => _showBroadcastPanel = !_showBroadcastPanel),
+            color: _showBroadcastPanel ? Colors.redAccent : null,
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildMapControlButton(IconData icon, VoidCallback onPressed) {
+  Widget _buildMapControlButton(IconData icon, VoidCallback onPressed, {Color? color}) {
     return GestureDetector(
       onTap: onPressed,
       child: Container(
@@ -293,9 +357,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         decoration: BoxDecoration(
           color: const Color(0xFF030D16).withOpacity(0.8),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.white10),
+          border: Border.all(color: color?.withOpacity(0.5) ?? Colors.white10),
         ),
-        child: Icon(icon, color: Colors.white, size: 20),
+        child: Icon(icon, color: color ?? Colors.white, size: 20),
       ),
     );
   }
@@ -371,6 +435,40 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       ],
     );
   }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            _isViewingHistory ? Icons.history_rounded : Icons.radar_rounded,
+            color: Colors.white.withOpacity(0.05),
+            size: 64,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            _isViewingHistory ? "NO HISTORY FOUND" : "NO ACTIVE INCIDENTS",
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.2),
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 2,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _isViewingHistory ? "All past missions will appear here" : "Monitoring network for signals...",
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.1),
+              fontSize: 9,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _AdminMapWidget extends StatelessWidget {
@@ -379,11 +477,13 @@ class _AdminMapWidget extends StatelessWidget {
   final MapController mapController;
   final String? selectedIncidentId;
   final Function(Incident) onIncidentSelected;
+  final NetworkTileProvider tileProvider;
 
   _AdminMapWidget({
     required this.incidents,
     required this.responders,
     required this.mapController,
+    required this.tileProvider,
     this.selectedIncidentId,
     required this.onIncidentSelected,
   });
@@ -397,17 +497,24 @@ class _AdminMapWidget extends StatelessWidget {
         initialZoom: 13,
       ),
       children: [
-        TileLayer(
-          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-          userAgentPackageName: 'com.emptylife.civicpulse',
-          tileBuilder: (context, tileWidget, tile) => ColorFiltered(
-            colorFilter: const ColorFilter.matrix([
-              -1, 0, 0, 0, 255,
-              0, -1, 0, 0, 255,
-              0, 0, -1, 0, 255,
-              0, 0, 0, 1, 0,
-            ]),
-            child: tileWidget,
+        ColorFiltered(
+          colorFilter: const ColorFilter.matrix([
+            -0.2126, -0.7152, -0.0722, 0, 255,
+            -0.2126, -0.7152, -0.0722, 0, 255,
+            -0.2126, -0.7152, -0.0722, 0, 255,
+            0, 0, 0, 1, 0,
+          ]),
+          child: TileLayer(
+            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+            userAgentPackageName: 'com.emptylife.civicpulse',
+            maxZoom: 18,
+            tileProvider: tileProvider,
+            fallbackUrl: 'https://tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
+            errorTileCallback: (tile, error, stackTrace) {
+              debugPrint('[MAP] Tile error: ${tile.coordinates} - $error');
+            },
+            tileDisplay: const TileDisplay.fadeIn(duration: Duration(milliseconds: 200)),
+            retinaMode: false,
           ),
         ),
         

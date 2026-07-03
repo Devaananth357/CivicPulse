@@ -22,6 +22,11 @@ class DispatchProvider extends ChangeNotifier {
   StreamSubscription? _respondersSubscription;
   Timer? _sentinelTimer;
 
+  // Smart Broadcast Trigger members
+  final Set<String> _promptedIncidentIds = {};
+  final StreamController<Incident> _pendingBroadcastPromptController = StreamController<Incident>.broadcast();
+  bool _isFirstLoad = true;
+
   // Rule: Only auto-assign incidents created AFTER this session started
   final DateTime _sessionStartTime = DateTime.now();
 
@@ -29,13 +34,15 @@ class DispatchProvider extends ChangeNotifier {
   List<Map<String, dynamic>> get suggestedResponders => _suggestedResponders;
   bool get isAutoAssigning => _isAutoAssigning;
   bool get isAnalyzing => _isAnalyzing;
+  Stream<Incident> get pendingBroadcastPromptStream => _pendingBroadcastPromptController.stream;
 
   DispatchProvider() {
     _initSentinel();
   }
 
   void _initSentinel() {
-    _incidentsSubscription = _firestoreService.getIncidentsStream().listen((incidents) {
+    _incidentsSubscription = _firestoreService.getAllIncidentsStream().listen((incidents) {
+      _checkStatusTransitions(incidents);
       _allIncidents = incidents;
       _updateSuggestions();
     });
@@ -51,6 +58,35 @@ class DispatchProvider extends ChangeNotifier {
     });
   }
 
+  void _checkStatusTransitions(List<Incident> currentIncidents) {
+    if (_isFirstLoad) {
+      // On first load, mark all existing assigned incidents as "prompted" to avoid spamming the admin
+      for (var inc in currentIncidents) {
+        if (inc.status.toLowerCase() == 'assigned' && inc.id != null) {
+          _promptedIncidentIds.add(inc.id!);
+        }
+      }
+      _isFirstLoad = false;
+      return;
+    }
+
+    for (var inc in currentIncidents) {
+      if (inc.id == null) continue;
+      
+      // If incident is now 'assigned' and we haven't prompted for it yet
+      if (inc.status.toLowerCase() == 'assigned' && !_promptedIncidentIds.contains(inc.id)) {
+        _promptedIncidentIds.add(inc.id!);
+        _pendingBroadcastPromptController.add(inc);
+        print("🚨 Smart Trigger: Detected assigned incident ${inc.id}. Triggering prompt.");
+      }
+    }
+  }
+
+  // Allow UI to manually mark as ignored or handled
+  void markIncidentAsPrompted(String incidentId) {
+    _promptedIncidentIds.add(incidentId);
+  }
+
   void _updateSuggestions() {
     if (_selectedIncident != null) {
       try {
@@ -59,8 +95,13 @@ class DispatchProvider extends ChangeNotifier {
         _suggestedResponders = _calculateSuggestions(updatedIncident, _allResponders);
         notifyListeners();
       } catch (e) {
-        // If incident no longer exists in the active stream (deleted or completed)
-        clearSelection();
+        // If incident was deleted, clear. If it was completed, keep it but clear suggestions
+        if (_selectedIncident != null && _selectedIncident!.isCompleted) {
+            _suggestedResponders = [];
+            notifyListeners();
+        } else {
+            clearSelection();
+        }
       }
     }
   }
@@ -137,7 +178,16 @@ class DispatchProvider extends ChangeNotifier {
     final now = DateTime.now();
     
     for (var incident in _allIncidents) {
-      // Rule 1: Only "Open" (unassigned) incidents
+      // 1. AI Logic for Backup Auto-Assignment (15s timeout)
+      if (incident.backupRequests.isNotEmpty && incident.backupRequestedAt != null) {
+        final backupAge = now.difference(incident.backupRequestedAt!).inSeconds;
+        if (backupAge >= 15) {
+          print("Sentinel: Backup timeout reached for incident ${incident.id}. AI Auto-assigning...");
+          _autoAssignBackup(incident);
+        }
+      }
+
+      // 2. Original AI Logic for Initial Auto-Assignment (60s timeout)
       if (incident.status.toLowerCase() != 'open') continue;
       
       // Rule 2: Skip if Admin is currently investigating this incident
@@ -149,8 +199,27 @@ class DispatchProvider extends ChangeNotifier {
       // Rule 4: Age check - 60 seconds
       final ageSeconds = now.difference(incident.createdAt).inSeconds;
       if (ageSeconds >= 60) {
-        print("Sentinel: Auto-assigning incident ${incident.id} (Created at: ${incident.createdAt})");
+        print("Sentinel: Initial Auto-dispatch for incident ${incident.id}");
         _autoAssign(incident);
+      }
+    }
+  }
+
+  Future<void> _autoAssignBackup(Incident incident) async {
+    for (var spec in incident.backupRequests) {
+      // Calculate suggestions specifically for this required backup specialization
+      final specSuggestions = _calculateSuggestions(incident, _allResponders)
+          .where((s) => (s['responder'] as Responder).specialization.toLowerCase() == spec.toLowerCase())
+          .toList();
+      
+      if (specSuggestions.isNotEmpty) {
+        try {
+          final nearest = specSuggestions.first['responder'] as Responder;
+          print("Sentinel AI: Dispatched $spec backup (${nearest.id}) to incident ${incident.id}");
+          await _firestoreService.assignResponderToIncident(nearest.id, incident.id!);
+        } catch (e) {
+          print("Sentinel AI backup error: $e");
+        }
       }
     }
   }
@@ -214,6 +283,22 @@ class DispatchProvider extends ChangeNotifier {
 
   Future<void> deleteIncidentById(BuildContext context, String incidentId) async {
     try {
+      // 1. Find the incident to check its state before deletion
+      try {
+        final incident = _allIncidents.firstWhere((i) => i.id == incidentId);
+        
+        // 2. Logic: If SOS is deleted (denied/cleared), reset user to Safe
+        // Trigger for ANY SOS type or isSos flag, regardless of assignment status
+        if ((incident.type.toUpperCase() == 'SOS' || incident.isSos) && incident.userId != null) {
+          print("🛡️ Admin cleared SOS incident ($incidentId). Resetting user ${incident.userId} to Safe.");
+          await _firestoreService.updateUserStatus(incident.userId!, 'safe');
+        } else {
+          print("🛡️ Admin deleted non-SOS incident or no UserID present: ${incident.type}");
+        }
+      } catch (e) {
+        print("Note: Incident object not found in local feed during delete check: $e");
+      }
+
       await _firestoreService.deleteIncident(incidentId);
       if (_selectedIncident?.id == incidentId) {
         clearSelection();
@@ -255,6 +340,7 @@ class DispatchProvider extends ChangeNotifier {
     _incidentsSubscription?.cancel();
     _respondersSubscription?.cancel();
     _sentinelTimer?.cancel();
+    _pendingBroadcastPromptController.close();
     super.dispose();
   }
 }

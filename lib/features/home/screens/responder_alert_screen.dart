@@ -3,10 +3,30 @@ import 'package:provider/provider.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import '../providers/responder_provider.dart';
+import '../../../core/utils/map_utils.dart';
 import '../../../core/theme/app_colors.dart';
 
-class ResponderAlertScreen extends StatelessWidget {
+class ResponderAlertScreen extends StatefulWidget {
   const ResponderAlertScreen({super.key});
+
+  @override
+  State<ResponderAlertScreen> createState() => _ResponderAlertScreenState();
+}
+
+class _ResponderAlertScreenState extends State<ResponderAlertScreen> {
+  late final NetworkTileProvider _tileProvider;
+
+  @override
+  void initState() {
+    super.initState();
+    _tileProvider = NetworkTileProvider(
+      httpClient: MapUtils.mapClient,
+      headers: {
+        'User-Agent': 'CivicPulse/1.0 (com.emptylife.civicpulse; contact@civicpulse.app)',
+        'Accept': 'image/png,image/*',
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,7 +68,7 @@ class ResponderAlertScreen extends StatelessWidget {
                         const SizedBox(height: 24),
                         _buildRequirements(incident),
                         const SizedBox(height: 24),
-                        _buildMapPreview(incident),
+                        _buildMapPreview(context, incident),
                         const SizedBox(height: 100), // Buffer for buttons
                       ],
                     ),
@@ -205,7 +225,7 @@ class ResponderAlertScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMapPreview(dynamic incident) {
+  Widget _buildMapPreview(BuildContext context, dynamic incident) {
     final lat = incident.latitude ?? 0.0;
     final lng = incident.longitude ?? 0.0;
 
@@ -234,20 +254,25 @@ class ResponderAlertScreen extends StatelessWidget {
                 initialZoom: 15,
               ),
               children: [
-                TileLayer(
-                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                  userAgentPackageName: 'com.emptylife.civicpulse',
-                  tileBuilder: (context, tileWidget, tile) {
-                    return ColorFiltered(
-                      colorFilter: const ColorFilter.matrix([
-                        -0.9, 0, 0, 0, 255,
-                        0, -0.9, 0, 0, 255,
-                        0, 0, -0.9, 0, 255,
-                        0, 0, 0, 1, 0,
-                      ]),
-                      child: tileWidget,
-                    );
-                  },
+                ColorFiltered(
+                  colorFilter: const ColorFilter.matrix([
+                    -0.2126, -0.7152, -0.0722, 0, 255,
+                    -0.2126, -0.7152, -0.0722, 0, 255,
+                    -0.2126, -0.7152, -0.0722, 0, 255,
+                    0, 0, 0, 1, 0,
+                  ]),
+                  child: TileLayer(
+                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'com.emptylife.civicpulse',
+                    maxZoom: 18,
+                    tileProvider: _tileProvider,
+                    fallbackUrl: 'https://tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
+                    errorTileCallback: (tile, error, stackTrace) {
+                      debugPrint('[MAP] Tile error: ${tile.coordinates} - $error');
+                    },
+                    tileDisplay: const TileDisplay.fadeIn(duration: Duration(milliseconds: 200)),
+                    retinaMode: false,
+                  ),
                 ),
                 MarkerLayer(
                   markers: [

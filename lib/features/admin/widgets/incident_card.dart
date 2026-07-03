@@ -59,7 +59,8 @@ class _IncidentCardState extends State<IncidentCard> with SingleTickerProviderSt
 
   @override
   Widget build(BuildContext context) {
-    final Color accentColor = _getSeverityColor(widget.incident.severity);
+    final bool isSos = widget.incident.isSos;
+    final Color accentColor = isSos ? Colors.redAccent : _getSeverityColor(widget.incident.severity);
     final String timeAgo = _formatTimeAgo(widget.incident.createdAt);
 
     return SlideTransition(
@@ -88,12 +89,23 @@ class _IncidentCardState extends State<IncidentCard> with SingleTickerProviderSt
                   child: Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF132D3E).withOpacity(0.8),
+                      color: isSos 
+                          ? Colors.red.withOpacity(0.1 + (_glowAnimation.value * 0.05))
+                          : const Color(0xFF132D3E).withOpacity(0.8),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: accentColor.withOpacity(0.2 + (_glowAnimation.value * 0.3)),
-                        width: 1.5,
+                        color: isSos
+                            ? Colors.redAccent.withOpacity(0.5 + (_glowAnimation.value * 0.5))
+                            : accentColor.withOpacity(0.2 + (_glowAnimation.value * 0.3)),
+                        width: isSos ? 2.5 : 1.5,
                       ),
+                      boxShadow: isSos ? [
+                        BoxShadow(
+                          color: Colors.redAccent.withOpacity(0.2 * _glowAnimation.value),
+                          blurRadius: 20,
+                          spreadRadius: 5,
+                        )
+                      ] : null,
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -103,9 +115,16 @@ class _IncidentCardState extends State<IncidentCard> with SingleTickerProviderSt
                           children: [
                             Row(
                               children: [
-                                _buildBadge(widget.incident.type, accentColor),
+                                _buildBadge(isSos ? "EMERGENCY SOS" : widget.incident.type, accentColor),
                                 const SizedBox(width: 8),
                                 _buildStatusBadge(widget.incident.status),
+                                if (widget.incident.backupRequests.isNotEmpty) ...[
+                                  const SizedBox(width: 8),
+                                  ...widget.incident.backupRequests.map((type) => Padding(
+                                    padding: const EdgeInsets.only(right: 4),
+                                    child: _buildBadge("NEEDS ${type.toUpperCase()}", Colors.orangeAccent),
+                                  )),
+                                ],
                               ],
                             ),
                             Row(
@@ -139,7 +158,9 @@ class _IncidentCardState extends State<IncidentCard> with SingleTickerProviderSt
                           children: [
                             Expanded(
                               child: Text(
-                                "${widget.incident.type.toUpperCase()} @ ${widget.incident.location}",
+                                isSos 
+                                  ? "🚨 SOS SIGNAL DETECTED @ ${widget.incident.location}"
+                                  : "${widget.incident.type.toUpperCase()} @ ${widget.incident.location}",
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
                                   color: Colors.white,
@@ -192,6 +213,14 @@ class _IncidentCardState extends State<IncidentCard> with SingleTickerProviderSt
                           ),
                         ],
                         const SizedBox(height: 20),
+                        Row(
+                          children: [
+                            _buildVerificationStat(Icons.check_circle_rounded, "CONFIRMED", widget.incident.confirmCount.toString(), Colors.greenAccent),
+                            const SizedBox(width: 16),
+                            _buildVerificationStat(Icons.cancel_rounded, "DENIED", widget.incident.denyCount.toString(), Colors.redAccent),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -290,6 +319,24 @@ class _IncidentCardState extends State<IncidentCard> with SingleTickerProviderSt
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildVerificationStat(IconData icon, String label, String value, Color color) {
+    return Row(
+      children: [
+        Icon(icon, color: color, size: 14),
+        const SizedBox(width: 6),
+        Text(
+          "$value $label",
+          style: TextStyle(
+            color: color.withOpacity(0.8),
+            fontSize: 10,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 0.5,
+          ),
+        ),
+      ],
     );
   }
 

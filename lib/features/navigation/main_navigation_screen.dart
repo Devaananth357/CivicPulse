@@ -20,21 +20,17 @@ class MainNavigationScreen extends StatefulWidget {
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final homeProvider = Provider.of<HomeProvider>(context, listen: false);
-      
-      if (authProvider.userId != null) {
-        homeProvider.initialize(authProvider.userId);
-      }
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
     final navProvider = Provider.of<NavigationProvider>(context);
+    final authProvider = Provider.of<AuthProvider>(context);
+    final homeProvider = Provider.of<HomeProvider>(context, listen: false);
+
+    // Keep HomeProvider in sync with real-time user status changes from AuthProvider
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (authProvider.userId != null) {
+        homeProvider.syncWithAuth(authProvider.userId, authProvider.userStatus);
+      }
+    });
 
     return Scaffold(
       body: Stack(

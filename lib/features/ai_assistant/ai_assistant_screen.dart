@@ -1,7 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../core/theme/app_colors.dart';
+import 'package:civic_pulse/core/theme/app_colors.dart';
 import 'ai_assistant_provider.dart';
 import '../home/home_provider.dart';
 
